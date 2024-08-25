@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "trcore"
+name = "tr_core"
 version = "0.1.0"
 description = ""
 authors = ["yada <trojblue@gmail.com>"]
@@ -7,6 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
+gradio-client = "^1.3.0"
 
 
 [build-system]
