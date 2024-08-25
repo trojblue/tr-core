@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "trcore"
+name = "tr_core"
 version = "0.1.0"
 description = ""
 authors = ["yada <trojblue@gmail.com>"]
