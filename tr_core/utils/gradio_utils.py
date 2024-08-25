@@ -1,4 +1,5 @@
 import ast
+from http import client
 import re
 
 import os
@@ -8,12 +9,22 @@ from PIL import Image
 
 import unibox as ub
 
+import logging
+logger = logging.getLogger(__name__)
 
 class GradioApiCaller:
     def __init__(self):
         self.client_url = None
         self.client = None
         self.temp_files = []
+
+    def _is_url(self, value: str) -> bool:
+        """
+        Checks if the given string is a URL.
+        """
+        url_pattern = re.compile(
+            r'^(https?|ftp)://[^\s/$.?#].[^\s]*$', re.IGNORECASE)
+        return re.match(url_pattern, value) is not None
 
     def _prepare_args(self, args):
         """
@@ -27,10 +38,20 @@ class GradioApiCaller:
         """
         prepared_args = {}
         for key, value in args.items():
-            if isinstance(value, str) and value.startswith("FILE:"):
-                # Handle file inputs by wrapping with handle_file
-                file_path = value[len("FILE:"):]
-                prepared_args[key] = handle_file(file_path)
+            if isinstance(value, str):
+                if value.startswith("FILE:"):
+                    # Handle file inputs by wrapping with handle_file
+                    file_path = value[len("FILE:"):]
+                    prepared_args[key] = handle_file(file_path)
+                elif self._is_url(value):
+                    # If the value is a URL but doesn't start with FILE:, raise a warning
+                    logger.warning(
+                        f"Warning: The argument '{key}' appears to be a URL but doesn't start with 'FILE:'. "
+                        f"Did you forget to add 'FILE:' in front of it?"
+                    )
+                    prepared_args[key] = value
+                else:
+                    prepared_args[key] = value
             else:
                 prepared_args[key] = value
         return prepared_args
@@ -128,12 +149,12 @@ class GradioApiCaller:
         """
         return self.call_gradio_api(client_url, default_args, override_args)
 
-
 class GradioCodeStrParser:
     def __init__(self):
         self.client_url = None
         self.predict_args_str = None
         self.predict_args = {}
+        self.parse_file = False
 
     def extract_client_url(self, code_str):
         """
@@ -189,19 +210,35 @@ class GradioCodeStrParser:
             key = key.strip()
             value = value.strip()
 
-            # Convert the value to the appropriate Python type
-            try:
-                self.predict_args[key] = ast.literal_eval(value)
-            except (SyntaxError, ValueError):
-                self.predict_args[key] = value
+            # Check if the value is a handle_file(...) call
+            handle_file_match = re.match(r'handle_file\((.*)\)', value)
+            if self.parse_file and handle_file_match:
+                # Extract the content inside handle_file(...) and remove any wrapping quotes
+                file_content = handle_file_match.group(1).strip().strip("'").strip('"')
+                self.predict_args[key] = f"FILE:{file_content}"
+            else:
+                # Convert the value to the appropriate Python type
+                try:
+                    self.predict_args[key] = ast.literal_eval(value)
+                except (SyntaxError, ValueError):
+                    self.predict_args[key] = value
 
-    def __call__(self, code_str):
+    def __call__(self, code_str, parse_file=False):
         """
         Allows the class instance to be called like a function.
+
+        Args:
+            code_str (str): The code string to parse.
+            parse_file (bool): If True, parse the content inside handle_file(...).
+                               If False, leave handle_file(...) as is.
         """
+        self.parse_file = parse_file
         self.extract_client_url(code_str)
         self.extract_predict_args_str(code_str)
         self.parse_predict_args()
+
+        if not self.client_url:
+            raise ValueError("Client URL not found in the provided code.")
 
         return self.client_url, self.predict_args
 
