@@ -1,6 +1,6 @@
 import ast
 import re
-from gradio_client import Client
+from gradio_client import Client, handle_file
 
 
 class GradioApiCaller:
@@ -8,19 +8,34 @@ class GradioApiCaller:
         self.client_url = None
         self.client = None
 
+    def _prepare_args(self, args):
+        """
+        Prepares the arguments, handling special cases like FILE: for file inputs.
+
+        Args:
+            args (dict): The arguments to be passed to the Gradio API.
+
+        Returns:
+            dict: The prepared arguments.
+        """
+        prepared_args = {}
+        for key, value in args.items():
+            if isinstance(value, str) and value.startswith("FILE:"):
+                # Handle file inputs by wrapping with handle_file
+                file_path = value[len("FILE:"):]
+                prepared_args[key] = handle_file(file_path)
+            else:
+                prepared_args[key] = value
+        return prepared_args
+
     def call_gradio_api(self, client_url: str, default_args: dict, override_args: dict) -> dict:
         """
         Calls the Gradio API with the provided arguments, allowing overrides but not extra arguments.
 
         Args:
             client_url (str): The URL of the Gradio client.
-                e.g., "https://flag-celebration-manually-pan.trycloudflare.com/"
-            
             default_args (dict): The default arguments to be used if not overridden.
-                e.g., {"user_input": "frederica bernkastel, 1girl", "num_images": 4, "seed": -1}
-            
             override_args (dict): The arguments to override the defaults.
-                e.g., {"user_input": "ootori emu, 1girl"}
 
         Returns:
             dict: The result from the Gradio API call.
@@ -33,15 +48,18 @@ class GradioApiCaller:
         # Merge the default arguments with the overrides
         merged_args = {**default_args, **override_args}
 
+        # Prepare the arguments, handling FILE: inputs
+        prepared_args = self._prepare_args(merged_args)
+
         # Initialize a new client only if the client_url has changed
         if self.client_url != client_url:
             self.client_url = client_url
             self.client = Client(client_url)
 
         # Call the API
-        result = self.client.predict(**merged_args)
+        result = self.client.predict(**prepared_args)
         return result
-    
+
     def __call__(self, client_url: str, default_args: dict, override_args: dict) -> dict:
         """
         Allows the class instance to be called like a function.
