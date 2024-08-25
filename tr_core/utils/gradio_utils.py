@@ -6,11 +6,14 @@ import tempfile
 from gradio_client import Client, handle_file
 from PIL import Image
 
+import unibox as ub
+
 
 class GradioApiCaller:
     def __init__(self):
         self.client_url = None
         self.client = None
+        self.temp_files = []
 
     def _prepare_args(self, args):
         """
@@ -34,7 +37,7 @@ class GradioApiCaller:
 
     def _save_non_serializable(self, key, value):
         """
-        Saves non-JSON-serializable objects (like PIL images) to a temporary file.
+        Saves non-JSON-serializable objects (like PIL images or DataFrames) to a temporary file.
 
         Args:
             key (str): The key of the argument.
@@ -44,30 +47,36 @@ class GradioApiCaller:
             str: The file path wrapped with "FILE:" prefix.
         """
         if isinstance(value, Image.Image):
-            # Save the PIL image to a temporary file
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            value.save(temp_file.name)
-            temp_file.close()
+            # Determine the appropriate file extension based on the image format
+            extension = value.format.lower() if value.format else 'png'
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{extension}') as temp_file:
+                # Keep track of the temp file for cleanup
+                self.temp_files.append(temp_file.name)
+                value.save(temp_file.name)
+                temp_file.flush()  # Ensure all data is written to disk
             return f"FILE:{temp_file.name}"
         else:
-            raise ValueError(f"The argument '{key}' contains an unsupported non-serializable type: {type(value)}")
+            # Handle other types or raise an error
+            raise ValueError(
+                f"Unsupported type for key '{key}': {type(value)}")
 
-    def call_gradio_api(self, client_url: str, default_args: dict, override_args: dict) -> dict:
+    def _cleanup_temp_files(self):
         """
-        Calls the Gradio API with the provided arguments, allowing overrides but not extra arguments.
-
-        Args:
-            client_url (str): The URL of the Gradio client.
-            default_args (dict): The default arguments to be used if not overridden.
-            override_args (dict): The arguments to override the defaults.
-
-        Returns:
-            dict: The result from the Gradio API call.
+        Cleans up temporary files created during the API call.
         """
+        for temp_file in self.temp_files:
+            try:
+                os.remove(temp_file)
+            except OSError as e:
+                print(f"Error: {temp_file} : {e.strerror}")
+        self.temp_files = []  # Reset the list after cleanup
+
+    def _call_gradio_api(self, client_url: str, default_args: dict, override_args: dict) -> dict:
         # Ensure no extra arguments are provided
         extra_args = set(override_args) - set(default_args)
         if extra_args:
-            raise ValueError(f"Extra arguments provided that are not in the default arguments: {extra_args}")
+            raise ValueError(
+                f"Extra arguments provided that are not in the default arguments: {extra_args}")
 
         # Merge the default arguments with the overrides
         merged_args = {**default_args, **override_args}
@@ -94,11 +103,31 @@ class GradioApiCaller:
         result = self.client.predict(**prepared_args)
         return result
 
+    def call_gradio_api(self, client_url: str, default_args: dict, override_args: dict) -> dict:
+        """
+        Calls the Gradio API with the provided arguments, allowing overrides but not extra arguments.
+
+        Args:
+            client_url (str): The URL of the Gradio client.
+            default_args (dict): The default arguments to be used if not overridden.
+            override_args (dict): The arguments to override the defaults.
+
+        Returns:
+            dict: The result from the Gradio API call.
+        """
+        try:
+            return self._call_gradio_api(client_url, default_args, override_args)
+
+        finally:
+            # Clean up temporary files after the API call
+            self._cleanup_temp_files()
+
     def __call__(self, client_url: str, default_args: dict, override_args: dict) -> dict:
         """
         Allows the class instance to be called like a function.
         """
         return self.call_gradio_api(client_url, default_args, override_args)
+
 
 class GradioCodeStrParser:
     def __init__(self):
