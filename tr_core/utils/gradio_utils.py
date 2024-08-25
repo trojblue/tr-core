@@ -1,6 +1,10 @@
 import ast
 import re
+
+import os
+import tempfile
 from gradio_client import Client, handle_file
+from PIL import Image
 
 
 class GradioApiCaller:
@@ -28,6 +32,26 @@ class GradioApiCaller:
                 prepared_args[key] = value
         return prepared_args
 
+    def _save_non_serializable(self, key, value):
+        """
+        Saves non-JSON-serializable objects (like PIL images) to a temporary file.
+
+        Args:
+            key (str): The key of the argument.
+            value: The non-serializable object.
+
+        Returns:
+            str: The file path wrapped with "FILE:" prefix.
+        """
+        if isinstance(value, Image.Image):
+            # Save the PIL image to a temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            value.save(temp_file.name)
+            temp_file.close()
+            return f"FILE:{temp_file.name}"
+        else:
+            raise ValueError(f"The argument '{key}' contains an unsupported non-serializable type: {type(value)}")
+
     def call_gradio_api(self, client_url: str, default_args: dict, override_args: dict) -> dict:
         """
         Calls the Gradio API with the provided arguments, allowing overrides but not extra arguments.
@@ -48,6 +72,16 @@ class GradioApiCaller:
         # Merge the default arguments with the overrides
         merged_args = {**default_args, **override_args}
 
+        # Handle non-JSON-serializable objects
+        for key, value in merged_args.items():
+            try:
+                # Test if the value is JSON-serializable
+                import json
+                json.dumps(value)
+            except (TypeError, ValueError):
+                # If not serializable, save to temp file
+                merged_args[key] = self._save_non_serializable(key, value)
+
         # Prepare the arguments, handling FILE: inputs
         prepared_args = self._prepare_args(merged_args)
 
@@ -65,7 +99,6 @@ class GradioApiCaller:
         Allows the class instance to be called like a function.
         """
         return self.call_gradio_api(client_url, default_args, override_args)
-
 
 class GradioCodeStrParser:
     def __init__(self):
