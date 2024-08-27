@@ -3,7 +3,11 @@ To start a worker:
 
 # cd /rmt/quail/LLaVA-latest
 
-python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-path /rmt/quail/captioner-1.4-llava-v1.6-llama3.1-CLIP-8b-ft-1
+# python -m llava.serve.controller --host 0.0.0.0 --port 10000
+
+# python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-path /rmt/quail/captioner-1.3-llava-v1.6-llama3-8b-ft-1
+
+# python -m llava.serve.gradio_web_server --controller http://localhost:10000 --model-list-mode reload --share
 
 """
 
