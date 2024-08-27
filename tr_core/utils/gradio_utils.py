@@ -268,6 +268,5 @@ def sample_parse_gradio_code_str():
     print(predict_args)
 
 
-# Initialize a GradioApiCaller instance when the module is loaded
-gradio_caller = GradioApiCaller()
-gradio_parser = GradioCodeStrParser()
+if __name__ == "__main__":
+    sample_parse_gradio_code_str()
