@@ -9,13 +9,13 @@ available functions:
 
 ```python
 # str -> python types
-from .string_utils import string_to_dtype       
+from tr_core.utils import string_to_dtype       
 
 # gradio code str -> python api calling 
-from .gradio_utils import parse_gradio_api, call_gradio_api  
+from tr_core.utils import parse_gradio_api, call_gradio_api  
 
 # comfyui api workflow -> gradio interface
-from .comfyui_utils import workflow_to_iface
+from tr_core.utils import workflow_to_iface
 ```
 
 misc:
