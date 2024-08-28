@@ -87,7 +87,7 @@ class GradioCodeStrParser:
                 except (SyntaxError, ValueError):
                     self.predict_args[key] = value
 
-    def __call__(self, code_str, parse_file=False):
+    def __call__(self, code_str, parse_file=True):
         """
         Allows the class instance to be called like a function.
 
@@ -243,6 +243,39 @@ class GradioApiCaller:
         Allows the class instance to be called like a function.
         """
         return self.call_gradio_api(client_url, default_args, override_args)
+
+
+def parse_gradio_api(code_str: str, parse_file=True):
+    """
+    Parses a Gradio API code string and returns the client URL and predict arguments.
+
+    Args:
+        code_str (str): The code string to parse.
+        parse_file (bool): If True, parse the content inside handle_file(...).
+                           If False, leave handle_file(...) as is.
+
+    Returns:
+        tuple: The client URL and predict arguments.
+    """
+    parser = GradioCodeStrParser()
+    url, args = parser(code_str, parse_file)
+    return url, args
+
+
+def call_gradio_api(client_url: str, default_args: dict, override_args: dict):
+    """
+    Calls a Gradio API with the provided arguments, allowing overrides but not extra arguments.
+
+    Args:
+        client_url (str): The URL of the Gradio client.
+        default_args (dict): The default arguments to be used if not overridden.
+        override_args (dict): The arguments to override the defaults.
+
+    Returns:
+        dict: The result from the Gradio API call.
+    """
+    caller = GradioApiCaller()
+    return caller(client_url, default_args, override_args)
 
 
 def sample_parse_gradio_code_str():

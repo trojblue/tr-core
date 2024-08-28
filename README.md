@@ -8,9 +8,9 @@ core modules for self codebase
 available functions:
 
 ```python
-from tr_core.utils import StringConverter  # str -> python types
-from tr_core.utils import workflow_to_iface # comfyui api workflow -> gradio interface
-from tr_core.utils import GradioCodeStrParser, GradioApiCaller  # gradio code str -> python api calling 
+from .string_utils import string_to_dtype       # str -> python types
+from .gradio_utils import parse_gradio_api, call_gradio_api  # gradio code str -> python api calling 
+from .comfyui_utils import workflow_to_iface    # comfyui api workflow -> gradio interface
 ```
 
 misc:

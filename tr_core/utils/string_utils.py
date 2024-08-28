@@ -54,3 +54,18 @@ class StringConverter:
     def __call__(self, value: str, enforce_type: str = "auto") -> Any:
         """Allow the class instance to be called like a function."""
         return self.string_to_any(value, enforce_type)
+
+
+def string_to_dtype(input_str: str, enforce_type: str = "auto") -> Callable[[str], Any]:
+    """
+    Convert a string to a function that converts strings to the appropriate Python type.
+
+    Args:
+        input_str (str): The string to convert.
+        enforce_type (str): The type to enforce. Can be 'auto', 'str', 'int', 'float', or 'bool'.
+
+    Returns:
+        Callable[[str], Any]: The function that converts strings to the appropriate Python type.
+    """
+    converter = StringConverter()
+    return converter(input_str, enforce_type)
