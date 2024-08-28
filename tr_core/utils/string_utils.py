@@ -7,6 +7,8 @@ def _raise_conversion_error(value: str, target_type: str):
 
 
 class StringConverter:
+    """Convert strings to Python types, with optional type enforcement.
+    """
 
     DEFAULT_TYPE_MAP = {
         "bool": lambda v: v == "True" if v in {"True", "False"} else _raise_conversion_error(v, "bool"),

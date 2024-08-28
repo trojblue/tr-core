@@ -12,6 +12,101 @@ import unibox as ub
 import logging
 logger = logging.getLogger(__name__)
 
+
+class GradioCodeStrParser:
+    def __init__(self):
+        self.client_url = None
+        self.predict_args_str = None
+        self.predict_args = {}
+        self.parse_file = False
+
+    def extract_client_url(self, code_str):
+        """
+        Extracts the client URL from the code string.
+        """
+        client_url_match = re.search(r'Client\("([^"]+)"\)', code_str)
+        if client_url_match:
+            self.client_url = client_url_match.group(1)
+        else:
+            raise ValueError("Client URL not found in the provided code.")
+
+    def extract_predict_args_str(self, code_str):
+        """
+        Extracts the text inside the client.predict(...) call.
+        """
+        predict_args_match = re.search(
+            r'client\.predict\((.*)\)', code_str, re.DOTALL)
+        if predict_args_match:
+            self.predict_args_str = predict_args_match.group(1).strip()
+
+            # Handle nested structures and capture until the last closing parenthesis
+            open_parens = 0
+            correct_end = len(self.predict_args_str)
+
+            for i, char in enumerate(self.predict_args_str):
+                if char == '(':
+                    open_parens += 1
+                elif char == ')':
+                    if open_parens == 0:
+                        correct_end = i
+                        break
+                    else:
+                        open_parens -= 1
+
+            self.predict_args_str = self.predict_args_str[:correct_end].strip()
+        else:
+            raise ValueError(
+                "Predict arguments not found in the provided code.")
+
+    def parse_predict_args(self):
+        """
+        Parses the predict arguments string into a dictionary.
+        """
+        if not self.predict_args_str:
+            raise ValueError("No predict arguments string to parse.")
+
+        # Split the string by commas that are followed by newlines and spaces
+        args_list = [arg.strip() for arg in self.predict_args_str.split(',\n')]
+
+        # Parse each key-value pair into the dictionary
+        for arg in args_list:
+            key, value = arg.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+
+            # Check if the value is a handle_file(...) call
+            handle_file_match = re.match(r'handle_file\((.*)\)', value)
+            if self.parse_file and handle_file_match:
+                # Extract the content inside handle_file(...) and remove any wrapping quotes
+                file_content = handle_file_match.group(1).strip().strip("'").strip('"')
+                self.predict_args[key] = f"FILE:{file_content}"
+            else:
+                # Convert the value to the appropriate Python type
+                try:
+                    self.predict_args[key] = ast.literal_eval(value)
+                except (SyntaxError, ValueError):
+                    self.predict_args[key] = value
+
+    def __call__(self, code_str, parse_file=False):
+        """
+        Allows the class instance to be called like a function.
+
+        Args:
+            code_str (str): The code string to parse.
+            parse_file (bool): If True, parse the content inside handle_file(...).
+                               If False, leave handle_file(...) as is.
+        """
+        self.parse_file = parse_file
+        self.extract_client_url(code_str)
+        self.extract_predict_args_str(code_str)
+        self.parse_predict_args()
+
+        if not self.client_url:
+            raise ValueError("Client URL not found in the provided code.")
+
+        return self.client_url, self.predict_args
+
+
 class GradioApiCaller:
     def __init__(self):
         self.client_url = None
@@ -148,99 +243,6 @@ class GradioApiCaller:
         Allows the class instance to be called like a function.
         """
         return self.call_gradio_api(client_url, default_args, override_args)
-
-class GradioCodeStrParser:
-    def __init__(self):
-        self.client_url = None
-        self.predict_args_str = None
-        self.predict_args = {}
-        self.parse_file = False
-
-    def extract_client_url(self, code_str):
-        """
-        Extracts the client URL from the code string.
-        """
-        client_url_match = re.search(r'Client\("([^"]+)"\)', code_str)
-        if client_url_match:
-            self.client_url = client_url_match.group(1)
-        else:
-            raise ValueError("Client URL not found in the provided code.")
-
-    def extract_predict_args_str(self, code_str):
-        """
-        Extracts the text inside the client.predict(...) call.
-        """
-        predict_args_match = re.search(
-            r'client\.predict\((.*)\)', code_str, re.DOTALL)
-        if predict_args_match:
-            self.predict_args_str = predict_args_match.group(1).strip()
-
-            # Handle nested structures and capture until the last closing parenthesis
-            open_parens = 0
-            correct_end = len(self.predict_args_str)
-
-            for i, char in enumerate(self.predict_args_str):
-                if char == '(':
-                    open_parens += 1
-                elif char == ')':
-                    if open_parens == 0:
-                        correct_end = i
-                        break
-                    else:
-                        open_parens -= 1
-
-            self.predict_args_str = self.predict_args_str[:correct_end].strip()
-        else:
-            raise ValueError(
-                "Predict arguments not found in the provided code.")
-
-    def parse_predict_args(self):
-        """
-        Parses the predict arguments string into a dictionary.
-        """
-        if not self.predict_args_str:
-            raise ValueError("No predict arguments string to parse.")
-
-        # Split the string by commas that are followed by newlines and spaces
-        args_list = [arg.strip() for arg in self.predict_args_str.split(',\n')]
-
-        # Parse each key-value pair into the dictionary
-        for arg in args_list:
-            key, value = arg.split('=', 1)
-            key = key.strip()
-            value = value.strip()
-
-            # Check if the value is a handle_file(...) call
-            handle_file_match = re.match(r'handle_file\((.*)\)', value)
-            if self.parse_file and handle_file_match:
-                # Extract the content inside handle_file(...) and remove any wrapping quotes
-                file_content = handle_file_match.group(1).strip().strip("'").strip('"')
-                self.predict_args[key] = f"FILE:{file_content}"
-            else:
-                # Convert the value to the appropriate Python type
-                try:
-                    self.predict_args[key] = ast.literal_eval(value)
-                except (SyntaxError, ValueError):
-                    self.predict_args[key] = value
-
-    def __call__(self, code_str, parse_file=False):
-        """
-        Allows the class instance to be called like a function.
-
-        Args:
-            code_str (str): The code string to parse.
-            parse_file (bool): If True, parse the content inside handle_file(...).
-                               If False, leave handle_file(...) as is.
-        """
-        self.parse_file = parse_file
-        self.extract_client_url(code_str)
-        self.extract_predict_args_str(code_str)
-        self.parse_predict_args()
-
-        if not self.client_url:
-            raise ValueError("Client URL not found in the provided code.")
-
-        return self.client_url, self.predict_args
 
 
 def sample_parse_gradio_code_str():
