@@ -232,6 +232,20 @@ class WorkflowGradioGenerator:
 
         return iface
 
+
+def workflow_to_iface(raw_workflow:dict, hidden_params:list[str]=[]) -> gr.Interface:
+    """
+    Converts a Comfy-generated workflow to a Gradio interface.
+
+    Parameters:
+        raw_workflow (dict): The workflow to convert, using TaggedAny nodes as inputs
+        hidden_params (list[str]): The parameters to hide in the interface.
+    """
+    workflow = Workflow(raw_workflow)
+    generator = WorkflowGradioGenerator()
+    iface = generator(workflow, hidden_params=hidden_params)
+    return iface
+
     
 def demo():
     
