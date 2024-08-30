@@ -3,6 +3,7 @@ from typing import Dict, Any, Iterator, Tuple, List, Tuple, Callable
 import websocket  # NOTE: websocket-client (https://github.com/websocket-client/websocket-client)
 import uuid
 import json
+import random
 import urllib.request
 import urllib.parse
 from PIL import Image
@@ -10,6 +11,12 @@ import io
 import inspect
 
 import gradio as gr
+
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+executor = ThreadPoolExecutor(max_workers=4)
 
 
 class Workflow:
@@ -30,7 +37,12 @@ class Workflow:
 
     def get_modifiable_keys(self) -> Dict[str, Any]:
         """Returns a dictionary of modifiable keys and their content."""
-        return {key: value[1] for key, value in self._modifiable_keys.items()}
+        try:
+            keys = {key: value[1] for key, value in self._modifiable_keys.items()}
+        except Exceptions as e:
+            raise ValueError(f"Workflow does not contain any modifiable keys. It's not exportd as API format?\n{e} | {e.__class__.__name__}")
+            
+        return keys
 
     def update_modifiable_keys(self, overrides: Dict[str, Any]) -> None:
         """Updates the modifiable keys using the given overrides."""
@@ -72,25 +84,26 @@ class Workflow:
 
 
 class WorkflowExecutor:
-    def __init__(self, server_address="127.0.0.1:8188"):
+    def __init__(self, server_address="127.0.0.1:8188", timeout=120):
         self.server_address = server_address
         self.client_id = str(uuid.uuid4())
+        self.timeout = timeout  # Timeout in seconds
 
     def queue_prompt(self, prompt):
         p = {"prompt": prompt, "client_id": self.client_id}
         data = json.dumps(p).encode('utf-8')
         req = urllib.request.Request(f"http://{self.server_address}/prompt", data=data, method="POST")
-        return json.loads(urllib.request.urlopen(req).read())
+        return json.loads(urllib.request.urlopen(req, timeout=self.timeout).read())  # Set timeout
 
     def get_image(self, filename, subfolder, folder_type):
         data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
         url_values = urllib.parse.urlencode(data)
-        with urllib.request.urlopen(f"http://{self.server_address}/view?{url_values}") as response:
-            return response.read()
+        with urllib.request.urlopen(f"http://{self.server_address}/view?{url_values}", timeout=self.timeout) as response:
+            return response.read()  # Set timeout
 
     def get_history(self, prompt_id):
-        with urllib.request.urlopen(f"http://{self.server_address}/history/{prompt_id}") as response:
-            return json.loads(response.read())
+        with urllib.request.urlopen(f"http://{self.server_address}/history/{prompt_id}", timeout=self.timeout) as response:
+            return json.loads(response.read())  # Set timeout
 
     def get_images(self, ws, prompt):
         prompt_id = self.queue_prompt(prompt)['prompt_id']
@@ -120,24 +133,32 @@ class WorkflowExecutor:
 
         return output_images
 
-    def run_workflow(self, workflow_json:dict):
+    def run_workflow(self, workflow_json: dict):
         ws = websocket.WebSocket()
-        ws.connect(f"ws://{self.server_address}/ws?clientId={self.client_id}")
+        ws.connect(f"ws://{self.server_address}/ws?clientId={self.client_id}", timeout=self.timeout)  # Set timeout
         images = self.get_images(ws, workflow_json)
         return images
 
+    def __call__(self, workflow_json: dict):
+        return self.run_workflow(workflow_json)
+
+    
+def _async_save(img, path, quality=95):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    executor.submit(lambda: img.save(path, quality=quality))
+
 
 class WorkflowGradioGenerator:
-
     DEFAULT_COMMON_ORDERS = [
-        'api_positive', 'api_negative', 'api_width', 'api_height', 'api_batchsize', 'api_steps',
+        'api_positive', 'api_negative', 'api_width', 'api_height', 'api_batchsize', 'api_steps', 'api_seed'
     ]
 
-    def __init__(self, common_orders: List[str] = None):
+    def __init__(self, common_orders: List[str] = None, save_dir: str = None):
         """
         Initializes the WorkflowGradioGenerator with an optional list of common keys.
         """
         self.common_orders = common_orders if common_orders else self.DEFAULT_COMMON_ORDERS
+        self.save_dir = save_dir
 
     def _extract_gradio_inputs(self, modifiable_keys: Dict[str, Any], hidden_params: List[str] = None) -> Tuple[List[gr.components.Component], Dict[str, Any]]:
         """
@@ -156,7 +177,13 @@ class WorkflowGradioGenerator:
         
         for key in sorted_keys:
             value = modifiable_keys[key]
-            if isinstance(value, int):
+            if key == 'api_seed':
+                # Special handling for 'api_seed'
+                gr_input = gr.Slider(-1, 999999999, step=1, value=-1, label="seed")
+            elif key in ['api_positive', 'api_negative']:
+                # Special handling for 'api_positive' and 'api_negative'
+                gr_input = gr.Textbox(label=key, value=value, lines=4, placeholder=f"Enter multiple values for {key}")
+            elif isinstance(value, int):
                 gr_input = gr.Number(label=key, value=value)
             elif isinstance(value, float):
                 gr_input = gr.Number(label=key, value=value)
@@ -189,12 +216,21 @@ class WorkflowGradioGenerator:
             Function to be executed by Gradio with fixed arguments.
             """
             overrides = dict(zip(input_keys, args))
+            
+            # Handle random seed generation if api_seed is -1
+            if 'api_seed' in overrides and overrides['api_seed'] == -1:
+                overrides['api_seed'] = random.randint(0, 999999999)
+            
+            actual_seed = overrides.get('api_seed', -1)
             res = self._run_workflow_with_overrides(workflow, overrides)
 
             images = []
             for key, img_list in res.items():
                 if isinstance(img_list, list):
                     images.extend(img_list)
+
+            if self.save_dir:
+                self._save_results(images, overrides, actual_seed)
 
             return images, res
 
@@ -204,13 +240,35 @@ class WorkflowGradioGenerator:
         gradio_fn.__signature__ = sig.replace(parameters=new_params)
 
         return gradio_fn
-    
-    
+
+    def _save_results(self, images: List, overrides: Dict[str, Any], actual_seed: int):
+        """
+        Save the images and metadata to the specified directory.
+        """
+        time_str = time.strftime("%Y%m%d-%H%M%S")
+        os.makedirs(self.save_dir, exist_ok=True)
+        # Save images
+        for i, img in enumerate(images):
+            _async_save(img, os.path.join(self.save_dir, f"{time_str}_{i}.jpg"))
+
+        # Save metadata
+        metadata = {
+            "user_input": overrides.get('api_positive', ""),
+            "positive": overrides.get('api_positive', ""),
+            "negative": overrides.get('api_negative', ""),
+            "model": "",
+            "seed": actual_seed,
+            "time_str": time_str
+        }
+
+        with open(os.path.join(self.save_dir, f"{time_str}_meta.json"), 'w') as meta_file:
+            json.dump(metadata, meta_file)
+
     def __call__(self, 
                  workflow: Any, 
                  hidden_params: List[str] = None, 
                  title: str = "Dynamic Workflow Runner", 
-                 description: str = "Modify and run the workflow dynamically using Gradio."
+                 description: str = "Modify and run the workflow dynamically using Gradio.",
                  ) -> gr.Interface:
         """
         Generates a Gradio interface for the given workflow, optionally hiding certain parameters.
@@ -225,7 +283,7 @@ class WorkflowGradioGenerator:
         iface = gr.Interface(
             fn=gradio_fn,
             inputs=gr_inputs,
-            outputs=[gr.Gallery(label="Generated Images"), gr.JSON(label="Raw Response")],
+            outputs=[gr.Gallery(label="Generated Images", height=900), gr.JSON(label="Raw Response")],
             title=title,
             description=description,
         )
@@ -233,7 +291,13 @@ class WorkflowGradioGenerator:
         return iface
 
 
-def workflow_to_iface(raw_workflow:dict, hidden_params:list[str]=[]) -> gr.Interface:
+def workflow_to_iface(
+        raw_workflow:dict, 
+        hidden_params:list[str]=[],
+        title: str = "Dynamic Workflow Runner", 
+        description: str = "Modify and run the workflow dynamically using Gradio.",
+        save_dir:str = ""
+    ) ->  gr.Interface:
     """
     Converts a Comfy-generated workflow to a Gradio interface.
 
@@ -242,8 +306,8 @@ def workflow_to_iface(raw_workflow:dict, hidden_params:list[str]=[]) -> gr.Inter
         hidden_params (list[str]): The parameters to hide in the interface.
     """
     workflow = Workflow(raw_workflow)
-    generator = WorkflowGradioGenerator()
-    iface = generator(workflow, hidden_params=hidden_params)
+    generator = WorkflowGradioGenerator(save_dir=save_dir)
+    iface = generator(workflow, hidden_params=hidden_params, title=title, description=description)
     return iface
 
     
