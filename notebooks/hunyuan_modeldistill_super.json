@@ -1,0 +1,781 @@
+{
+  "3": {
+    "inputs": {
+      "seed": 274472710269226,
+      "steps": 42,
+      "cfg": 6,
+      "sampler_name": "euler",
+      "scheduler": "sgm_uniform",
+      "denoise": 0.55,
+      "model": [
+        "44",
+        0
+      ],
+      "positive": [
+        "105",
+        0
+      ],
+      "negative": [
+        "105",
+        1
+      ],
+      "latent_image": [
+        "121",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "4": {
+    "inputs": {
+      "ckpt_name": "yada_checkpoints/qft_v5c-c72se_logfav96_60k/checkpoint-e61_s16000.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": [
+        "116",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "lowres, (bad, watermark), 2000s, [2010s], worst quality, jpeg artifacts, unfinished, scan, chromatic aberration, bad quality, signature, extra digits, artistic error, username",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "TensorArt",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "ADAPTER"
+    }
+  },
+  "36": {
+    "inputs": {
+      "ipadapter_file": "ip_adapter_Noobtest_800000.bin"
+    },
+    "class_type": "IPAdapterModelLoader",
+    "_meta": {
+      "title": "IPAdapter Model Loader"
+    }
+  },
+  "39": {
+    "inputs": {
+      "clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+    },
+    "class_type": "CLIPVisionLoader",
+    "_meta": {
+      "title": "Load CLIP Vision"
+    }
+  },
+  "43": {
+    "inputs": {
+      "image": "ComfyUI_17918_.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "44": {
+    "inputs": {
+      "weight": 1,
+      "weight_type": "style and composition",
+      "combine_embeds": "concat",
+      "start_at": 0,
+      "end_at": 1,
+      "embeds_scaling": "K+V w/ C penalty",
+      "model": [
+        "48",
+        0
+      ],
+      "ipadapter": [
+        "36",
+        0
+      ],
+      "image": [
+        "81",
+        0
+      ],
+      "image_negative": [
+        "130",
+        0
+      ],
+      "clip_vision": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "IPAdapterAdvanced",
+    "_meta": {
+      "title": "IPAdapter Advanced"
+    }
+  },
+  "47": {
+    "inputs": {
+      "sampling": "v_prediction",
+      "zsnr": true,
+      "model": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingDiscrete",
+    "_meta": {
+      "title": "ModelSamplingDiscrete"
+    }
+  },
+  "48": {
+    "inputs": {
+      "multiplier": 0.7,
+      "model": [
+        "47",
+        0
+      ]
+    },
+    "class_type": "RescaleCFG",
+    "_meta": {
+      "title": "RescaleCFG"
+    }
+  },
+  "52": {
+    "inputs": {
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "53": {
+    "inputs": {
+      "filename_prefix": "TensorArt",
+      "images": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "NO ADAPTER"
+    }
+  },
+  "76": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "77": {
+    "inputs": {
+      "guidance": 8,
+      "conditioning": [
+        "87",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "78": {
+    "inputs": {
+      "model": [
+        "127",
+        0
+      ],
+      "conditioning": [
+        "77",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "79": {
+    "inputs": {
+      "noise": [
+        "80",
+        0
+      ],
+      "guider": [
+        "78",
+        0
+      ],
+      "sampler": [
+        "76",
+        0
+      ],
+      "sigmas": [
+        "82",
+        0
+      ],
+      "latent_image": [
+        "83",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "80": {
+    "inputs": {
+      "noise_seed": 133058087758225
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "81": {
+    "inputs": {
+      "tile_size": 256,
+      "overlap": 64,
+      "samples": [
+        "79",
+        0
+      ],
+      "vae": [
+        "92",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode (Tiled)"
+    }
+  },
+  "82": {
+    "inputs": {
+      "scheduler": "sgm_uniform",
+      "steps": 42,
+      "denoise": 1,
+      "model": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "83": {
+    "inputs": {
+      "width": 656,
+      "height": 912,
+      "length": 1,
+      "batch_size": 1
+    },
+    "class_type": "EmptyHunyuanLatentVideo",
+    "_meta": {
+      "title": "EmptyHunyuanLatentVideo"
+    }
+  },
+  "85": {
+    "inputs": {
+      "text": [
+        "112",
+        0
+      ],
+      "text2": "an anime illustration of, a girl with cat ears and cat tails, with white hair, wearing blue capelet and white shirt is sitting on a couch changing her underwear. the camera poses from below and her feet is in the frame, masterpiece, best quality, with professional photography composition, dynamic lighting, well-balanced color and contrast, clear separation of subject and background, detailed, and storytelling."
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  },
+  "86": {
+    "inputs": {
+      "text": [
+        "133",
+        0
+      ],
+      "seed": 995,
+      "autorefresh": "No"
+    },
+    "class_type": "DPRandomGenerator",
+    "_meta": {
+      "title": "Random Prompts"
+    }
+  },
+  "87": {
+    "inputs": {
+      "text": [
+        "112",
+        0
+      ],
+      "clip": [
+        "91",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "88": {
+    "inputs": {
+      "lora_name": "hunyuan8x/TMP_LORA_LINK/epoch141/adapter_model.safetensors",
+      "strength_model": 1,
+      "model": [
+        "90",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "89": {
+    "inputs": {
+      "unet_name": "locals/hunyuan_video_t2v_720p_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "90": {
+    "inputs": {
+      "shift": 7,
+      "model": [
+        "89",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "ModelSamplingSD3"
+    }
+  },
+  "91": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "llava_llama3_fp8_scaled.safetensors",
+      "type": "hunyuan_video"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "92": {
+    "inputs": {
+      "vae_name": "hunyuan_video_vae_bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "93": {
+    "inputs": {
+      "root_dir": "input",
+      "file": "hyv_prompts.txt",
+      "append": "append",
+      "insert": true,
+      "text": [
+        "86",
+        0
+      ]
+    },
+    "class_type": "SaveText|pysssss",
+    "_meta": {
+      "title": "Save Text 🐍"
+    }
+  },
+  "95": {
+    "inputs": {
+      "pixels": [
+        "81",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "98": {
+    "inputs": {
+      "upscale_method": "bilinear",
+      "scale_by": 1.4000000000000001,
+      "samples": [
+        "95",
+        0
+      ]
+    },
+    "class_type": "LatentUpscaleBy",
+    "_meta": {
+      "title": "Upscale Latent By"
+    }
+  },
+  "101": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "81",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "104": {
+    "inputs": {
+      "control_net_name": "diffusion_pytorch_model_promax.safetensors"
+    },
+    "class_type": "ControlNetLoader",
+    "_meta": {
+      "title": "Load ControlNet Model"
+    }
+  },
+  "105": {
+    "inputs": {
+      "strength": 0.3,
+      "start_percent": 0,
+      "end_percent": 0.6,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "control_net": [
+        "104",
+        0
+      ],
+      "image": [
+        "109",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "ControlNetApplyAdvanced",
+    "_meta": {
+      "title": "Apply ControlNet"
+    }
+  },
+  "109": {
+    "inputs": {
+      "a": 6.283185307179586,
+      "bg_threshold": 0.1,
+      "resolution": 512,
+      "image": [
+        "81",
+        0
+      ]
+    },
+    "class_type": "MiDaS-DepthMapPreprocessor",
+    "_meta": {
+      "title": "MiDaS Depth Map"
+    }
+  },
+  "110": {
+    "inputs": {
+      "images": [
+        "109",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "112": {
+    "inputs": {
+      "text": [
+        "86",
+        0
+      ],
+      "tags_front": "an anime illustration of",
+      "tags_back": "masterpiece, best quality, with professional photography composition, dynamic lighting, well-balanced color and contrast, clear separation of subject and background, detailed, and storytelling.",
+      "lowercase": true,
+      "replace_underscore": true,
+      "reformat_spacing": true,
+      "convert_braces": false
+    },
+    "class_type": "ReformatString",
+    "_meta": {
+      "title": "Advanced String Operations Node"
+    }
+  },
+  "116": {
+    "inputs": {
+      "text": [
+        "86",
+        0
+      ],
+      "tags_front": "(best quality:1)",
+      "tags_back": "absurdres, best [quality], 2020s",
+      "lowercase": true,
+      "replace_underscore": true,
+      "reformat_spacing": true,
+      "convert_braces": false
+    },
+    "class_type": "ReformatString",
+    "_meta": {
+      "title": "Advanced String Operations Node"
+    }
+  },
+  "118": {
+    "inputs": {
+      "upscale_model": [
+        "119",
+        0
+      ],
+      "image": [
+        "81",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
+  "119": {
+    "inputs": {
+      "model_name": "4x-UniScaleV2_Moderate.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "120": {
+    "inputs": {
+      "image_gen_width": 880,
+      "image_gen_height": 1216,
+      "resize_mode": "Crop and Resize",
+      "hint_image": [
+        "118",
+        0
+      ]
+    },
+    "class_type": "HintImageEnchance",
+    "_meta": {
+      "title": "Enchance And Resize Hint Images"
+    }
+  },
+  "121": {
+    "inputs": {
+      "pixels": [
+        "120",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "123": {
+    "inputs": {
+      "upscale_method": "bilinear",
+      "scale_by": 1.25,
+      "samples": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "LatentUpscaleBy",
+    "_meta": {
+      "title": "Upscale Latent By"
+    }
+  },
+  "124": {
+    "inputs": {
+      "seed": 274472710269226,
+      "steps": 42,
+      "cfg": 6,
+      "sampler_name": "euler",
+      "scheduler": "sgm_uniform",
+      "denoise": 0.55,
+      "model": [
+        "44",
+        0
+      ],
+      "positive": [
+        "105",
+        0
+      ],
+      "negative": [
+        "105",
+        1
+      ],
+      "latent_image": [
+        "123",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "125": {
+    "inputs": {
+      "samples": [
+        "124",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "126": {
+    "inputs": {
+      "filename_prefix": "TensorArt",
+      "images": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "NO ADAPTER"
+    }
+  },
+  "127": {
+    "inputs": {
+      "lora_name": "pixels_epoch6/adapter_model.safetensors",
+      "strength_model": 0,
+      "model": [
+        "88",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "128": {
+    "inputs": {
+      "images": [
+        "118",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "129": {
+    "inputs": {
+      "image": "pasted/image (15).png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "130": {
+    "inputs": {
+      "image": "pasted/image (16).png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "133": {
+    "inputs": {
+      "tag": "api_positive",
+      "enforce_type": "auto",
+      "content": "a girl with cat ears and cat tails, with white hair, wearing blue capelet and white shirt is sitting on a couch changing her underwear. the camera poses from below and her feet is in the frame"
+    },
+    "class_type": "TaggedAny",
+    "_meta": {
+      "title": "Tagged Any"
+    }
+  }
+}
